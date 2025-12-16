@@ -1,0 +1,3 @@
+/home/bala/wisehack25/engine/build/CMakeFiles/engine.dir
+/home/bala/wisehack25/engine/build/CMakeFiles/edit_cache.dir
+/home/bala/wisehack25/engine/build/CMakeFiles/rebuild_cache.dir

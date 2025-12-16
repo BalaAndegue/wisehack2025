@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC      -fno-stack-protector  -Xlinker -z -Xlinker now -fPIC -shared -lgcc -Wl,--hash-style=both -Xlinker -T -Xlinker "/home/bala/wisehack25/engine/build/engine.ldscript" -shared -Wl,-soname,libengine.so -o libengine.so CMakeFiles/engine.dir/src/engine.cpp.o  /home/bala/DynamoRIO-Linux-11.3.0-1/lib64/debug/libdynamorio.so 
