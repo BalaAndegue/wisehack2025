@@ -213,7 +213,7 @@ CMAKE_STRIP:FILEPATH=/usr/bin/strip
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 
 //Dependencies for the target
-engine_LIB_DEPENDS:STATIC=general;dynamorio;general;drmgr;general;drutil;
+engine_LIB_DEPENDS:STATIC=general;dynamorio;general;drmgr;general;drutil;general;drwrap;general;drsyms;
 
 //Value Computed by CMake
 wisehack25_engine_BINARY_DIR:STATIC=/home/bala/wisehack25/engine/build

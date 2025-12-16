@@ -13,3 +13,6 @@ configure_DynamoRIO_client(engine)
 # Extensions nécessaires
 use_DynamoRIO_extension(engine drmgr)
 use_DynamoRIO_extension(engine drutil)
+use_DynamoRIO_extension(engine drwrap)
+use_DynamoRIO_extension(engine drsyms)
+

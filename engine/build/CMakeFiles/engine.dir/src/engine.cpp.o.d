@@ -130,6 +130,9 @@ CMakeFiles/engine.dir/src/engine.cpp.o: \
  /home/bala/DynamoRIO-Linux-11.3.0-1/cmake/../include/dr_annotation.h \
  /home/bala/DynamoRIO-Linux-11.3.0-1/cmake/../ext/include/drmgr.h \
  /home/bala/DynamoRIO-Linux-11.3.0-1/cmake/../ext/include/drutil.h \
+ /home/bala/DynamoRIO-Linux-11.3.0-1/cmake/../ext/include/drwrap.h \
+ /home/bala/DynamoRIO-Linux-11.3.0-1/cmake/../ext/include/drext.h \
+ /home/bala/DynamoRIO-Linux-11.3.0-1/cmake/../ext/include/drsyms.h \
  /usr/include/c++/12/unordered_map /usr/include/c++/12/initializer_list \
  /usr/include/c++/12/bits/allocator.h \
  /usr/include/x86_64-linux-gnu/c++/12/bits/c++allocator.h \

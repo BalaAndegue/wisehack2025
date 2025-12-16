@@ -1,159 +1,127 @@
 #include "dr_api.h"
 #include "drmgr.h"
 #include "drutil.h"
+#include "drwrap.h"
+#include "drsyms.h"
 
 #include <unordered_map>
 #include <cstdint>
 
-/* =======================
-   Structures globales
-   ======================= */
-
 static std::unordered_map<app_pc, uint64_t> func_call_count;
 static std::unordered_map<app_pc, uint64_t> mem_access_count;
+
 static bool hotspot_detected = false;
-static app_pc hotspot_function = nullptr;
+static bool patch_applied   = false;
 
+static app_pc slow_func_addr = nullptr;
+static app_pc fast_func_addr = nullptr;
 
-/* =======================
-   Clean calls
-   ======================= */
+/* ---------- clean calls ---------- */
 
-static void
-count_function(void *drcontext, app_pc func_addr)
-{
-    func_call_count[func_addr]++;
+static void count_function(void *, app_pc pc) {
+    func_call_count[pc]++;
 }
 
-static void
-count_memory_access(void *drcontext, app_pc func_addr)
-{
-    mem_access_count[func_addr]++;
+static void count_memory_access(void *, app_pc pc) {
+    mem_access_count[pc]++;
 }
 
-/* =======================
-   Instrumentation BB
-   ======================= */
+/* ---------- BB instrumentation ---------- */
 
 static dr_emit_flags_t
-event_bb_instrumentation(void *drcontext,
-                          void *tag,
-                          instrlist_t *bb,
-                          instr_t *instr,
-                          bool for_trace,
-                          bool translating,
-                          void *user_data)
+event_bb_instrumentation(void *, void *, instrlist_t *bb,
+                         instr_t *instr, bool, bool, void *)
 {
-    /* On ne traite que la première instruction du BB */
     if (instr != instrlist_first_app(bb))
         return DR_EMIT_DEFAULT;
 
-    /* Adresse de la fonction courante */
     app_pc pc = instr_get_app_pc(instr);
 
-    /* ---- Comptage appels ---- */
-    dr_insert_clean_call(
-        drcontext,
-        bb,
-        instr,
-        (void *)count_function,
-        false,
-        1,
-        OPND_CREATE_INTPTR(pc)
-    );
+    dr_insert_clean_call(nullptr, bb, instr,
+        (void *)count_function, false, 1, OPND_CREATE_INTPTR(pc));
 
-    /* ---- Comptage accès mémoire ---- */
     if (instr_reads_memory(instr) || instr_writes_memory(instr)) {
-        dr_insert_clean_call(
-            drcontext,
-            bb,
-            instr,
-            (void *)count_memory_access,
-            false,
-            1,
-            OPND_CREATE_INTPTR(pc)
-        );
+        dr_insert_clean_call(nullptr, bb, instr,
+            (void *)count_memory_access, false, 1, OPND_CREATE_INTPTR(pc));
     }
 
     return DR_EMIT_DEFAULT;
 }
 
-/* =======================
-   Sortie programme
-   ======================= */
-static void
-detect_hotspot()
-{
-    uint64_t total_calls = 0;
-    uint64_t total_mem = 0;
+/* ---------- patch ---------- */
 
-    for (auto &it : func_call_count)
-        total_calls += it.second;
+static void apply_patch() {
+    if (patch_applied || !slow_func_addr || !fast_func_addr)
+        return;
 
-    for (auto &it : mem_access_count)
-        total_mem += it.second;
+    drwrap_replace(slow_func_addr, fast_func_addr, false);
+    patch_applied = true;
 
-    for (auto &it : func_call_count) {
-        app_pc func = it.first;
-        uint64_t calls = it.second;
-        uint64_t mem = mem_access_count[func];
+    dr_printf("[PATCH] slow_function redirected to fast_function\n");
+}
 
-        double call_ratio = (double)calls / (double)total_calls;
-        double mem_ratio  = (double)mem   / (double)total_mem;
+/* ---------- hotspot detection ---------- */
+
+static void detect_hotspot() {
+    uint64_t total_calls = 0, total_mem = 0;
+
+    for (auto &e : func_call_count) total_calls += e.second;
+    for (auto &e : mem_access_count) total_mem += e.second;
+
+    if (!total_calls || !total_mem) return;
+
+    for (auto &e : func_call_count) {
+        double call_ratio = (double)e.second / total_calls;
+        double mem_ratio  = (double)mem_access_count[e.first] / total_mem;
 
         if (call_ratio > 0.30 || mem_ratio > 0.40) {
             hotspot_detected = true;
-            hotspot_function = func;
-
-            dr_printf(
-                "\n[HOTSPOT DETECTED]\n"
-                "Function %p | call ratio = %.2f | mem ratio = %.2f\n",
-                func, call_ratio, mem_ratio
-            );
+            dr_printf("[HOTSPOT] %p call=%.2f mem=%.2f\n",
+                      e.first, call_ratio, mem_ratio);
+            apply_patch();
             return;
         }
     }
 }
 
+/* ---------- module load ---------- */
+
 static void
-event_exit(void)
-
+event_module_load(void *, const module_data_t *mod, bool)
 {
-    if (!hotspot_detected) {
-        detect_hotspot();
-    }
-    dr_printf("\n=== Function Call Summary ===\n");
-    for (auto &it : func_call_count) {
-        dr_printf("Function %p called %llu times\n",
-                  it.first,
-                  (unsigned long long)it.second);
-    }
+    size_t offset;
 
-    dr_printf("\n=== Memory Access Summary ===\n");
-    for (auto &it : mem_access_count) {
-        dr_printf("Function %p accessed memory %llu times\n",
-                  it.first,
-                  (unsigned long long)it.second);
-    }
+    if (!slow_func_addr &&
+        drsym_lookup_symbol(mod->full_path,
+            "slow_function", &offset, 0) == DRSYM_SUCCESS)
+        slow_func_addr = mod->start + offset;
+
+    if (!fast_func_addr &&
+        drsym_lookup_symbol(mod->full_path,
+            "fast_function", &offset, 0) == DRSYM_SUCCESS)
+        fast_func_addr = mod->start + offset;
 }
 
-/* =======================
-   Entrée client
-   ======================= */
+/* ---------- exit ---------- */
+
+static void event_exit(void) {
+    detect_hotspot();
+    drsym_exit();
+}
+
+/* ---------- entry ---------- */
 
 DR_EXPORT void
-dr_client_main(client_id_t id, int argc, const char *argv[])
-{
+dr_client_main(client_id_t, int, const char **) {
     drmgr_init();
     drutil_init();
-
-    dr_register_exit_event(event_exit);
+    drwrap_init();
+    drsym_init(0);
 
     drmgr_register_bb_instrumentation_event(
-        NULL,
-        event_bb_instrumentation,
-        NULL
-    );
+        nullptr, event_bb_instrumentation, nullptr);
+    drmgr_register_module_load_event(event_module_load);
+    dr_register_exit_event(event_exit);
 
-    dr_printf("WiseHack25 Engine loaded (Phase 1 + Memory tracking)\n");
+    dr_printf("WiseHack25 Engine loaded (FINAL)\n");
 }
