@@ -11,6 +11,9 @@
 
 static std::unordered_map<app_pc, uint64_t> func_call_count;
 static std::unordered_map<app_pc, uint64_t> mem_access_count;
+static bool hotspot_detected = false;
+static app_pc hotspot_function = nullptr;
+
 
 /* =======================
    Clean calls
@@ -78,10 +81,47 @@ event_bb_instrumentation(void *drcontext,
 /* =======================
    Sortie programme
    ======================= */
+static void
+detect_hotspot()
+{
+    uint64_t total_calls = 0;
+    uint64_t total_mem = 0;
+
+    for (auto &it : func_call_count)
+        total_calls += it.second;
+
+    for (auto &it : mem_access_count)
+        total_mem += it.second;
+
+    for (auto &it : func_call_count) {
+        app_pc func = it.first;
+        uint64_t calls = it.second;
+        uint64_t mem = mem_access_count[func];
+
+        double call_ratio = (double)calls / (double)total_calls;
+        double mem_ratio  = (double)mem   / (double)total_mem;
+
+        if (call_ratio > 0.30 || mem_ratio > 0.40) {
+            hotspot_detected = true;
+            hotspot_function = func;
+
+            dr_printf(
+                "\n[HOTSPOT DETECTED]\n"
+                "Function %p | call ratio = %.2f | mem ratio = %.2f\n",
+                func, call_ratio, mem_ratio
+            );
+            return;
+        }
+    }
+}
 
 static void
 event_exit(void)
+
 {
+    if (!hotspot_detected) {
+        detect_hotspot();
+    }
     dr_printf("\n=== Function Call Summary ===\n");
     for (auto &it : func_call_count) {
         dr_printf("Function %p called %llu times\n",
