@@ -29,24 +29,35 @@ static void count_memory_access(void *, app_pc pc) {
 /* ---------- BB instrumentation ---------- */
 
 static dr_emit_flags_t
-event_bb_instrumentation(void *, void *, instrlist_t *bb,
-                         instr_t *instr, bool, bool, void *)
+event_bb_instrumentation(void *drcontext, void *,
+                          instrlist_t *bb,
+                          instr_t *instr,
+                          bool, bool, void *)
 {
     if (instr != instrlist_first_app(bb))
         return DR_EMIT_DEFAULT;
 
     app_pc pc = instr_get_app_pc(instr);
 
-    dr_insert_clean_call(nullptr, bb, instr,
-        (void *)count_function, false, 1, OPND_CREATE_INTPTR(pc));
+    dr_insert_clean_call(
+        drcontext, bb, instr,
+        (void *)count_function,
+        false, 1,
+        OPND_CREATE_INTPTR(pc)
+    );
 
     if (instr_reads_memory(instr) || instr_writes_memory(instr)) {
-        dr_insert_clean_call(nullptr, bb, instr,
-            (void *)count_memory_access, false, 1, OPND_CREATE_INTPTR(pc));
+        dr_insert_clean_call(
+            drcontext, bb, instr,
+            (void *)count_memory_access,
+            false, 1,
+            OPND_CREATE_INTPTR(pc)
+        );
     }
 
     return DR_EMIT_DEFAULT;
 }
+
 
 /* ---------- patch ---------- */
 
@@ -75,10 +86,16 @@ static void detect_hotspot() {
         double mem_ratio  = (double)mem_access_count[e.first] / total_mem;
 
         if (call_ratio > 0.30 || mem_ratio > 0.40) {
-            hotspot_detected = true;
+
             dr_printf("[HOTSPOT] %p call=%.2f mem=%.2f\n",
                       e.first, call_ratio, mem_ratio);
-            apply_patch();
+
+            /* 🔒 PATCH SEULEMENT SI C'EST slow_function */
+            if (slow_func_addr && e.first == slow_func_addr) {
+                dr_printf("[HOTSPOT CONFIRMED] slow_function\n");
+                apply_patch();
+            }
+
             return;
         }
     }
