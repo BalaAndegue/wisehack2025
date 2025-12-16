@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = -DLINUX -DX86_64 -Dengine_EXPORTS
 
-CXX_INCLUDES = -I/home/bala/DynamoRIO-Linux-11.3.0-1/cmake/../include
+CXX_INCLUDES = -I/home/bala/DynamoRIO-Linux-11.3.0-1/cmake/../include -I/home/bala/DynamoRIO-Linux-11.3.0-1/cmake/../ext/include
 
 CXX_FLAGS = -fPIC
 

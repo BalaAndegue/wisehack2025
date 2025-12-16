@@ -92,6 +92,9 @@ engine_EXTERNAL_OBJECTS =
 
 libengine.so: CMakeFiles/engine.dir/src/engine.cpp.o
 libengine.so: CMakeFiles/engine.dir/build.make
+libengine.so: /home/bala/DynamoRIO-Linux-11.3.0-1/ext/lib64/debug/libdrutil.so
+libengine.so: /home/bala/DynamoRIO-Linux-11.3.0-1/ext/lib64/debug/libdrmgr.so
+libengine.so: /home/bala/DynamoRIO-Linux-11.3.0-1/ext/lib64/debug/libdrcontainers.a
 libengine.so: /home/bala/DynamoRIO-Linux-11.3.0-1/lib64/debug/libdynamorio.so
 libengine.so: CMakeFiles/engine.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/bala/wisehack25/engine/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX shared library libengine.so"
