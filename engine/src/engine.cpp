@@ -68,7 +68,7 @@ static void apply_patch() {
     drwrap_replace(slow_func_addr, fast_func_addr, false);
     patch_applied = true;
 
-    dr_printf("[PATCH] slow_function redirected to fast_function\n");
+    dr_printf("[PATCH] process_transaction redirected to process_transaction_optimized\n");
 }
 
 /* ---------- hotspot detection ---------- */
@@ -90,9 +90,9 @@ static void detect_hotspot() {
             dr_printf("[HOTSPOT] %p call=%.2f mem=%.2f\n",
                       e.first, call_ratio, mem_ratio);
 
-            /* 🔒 PATCH SEULEMENT SI C'EST slow_function */
+            /* 🔒 PATCH SEULEMENT SI C'EST process_transaction */
             if (slow_func_addr && e.first == slow_func_addr) {
-                dr_printf("[HOTSPOT CONFIRMED] slow_function\n");
+                dr_printf("[HOTSPOT CONFIRMED] process_transaction\n");
                 apply_patch();
             }
 
@@ -110,12 +110,12 @@ event_module_load(void *, const module_data_t *mod, bool)
 
     if (!slow_func_addr &&
         drsym_lookup_symbol(mod->full_path,
-            "slow_function", &offset, 0) == DRSYM_SUCCESS)
+            "process_transaction", &offset, 0) == DRSYM_SUCCESS)
         slow_func_addr = mod->start + offset;
 
     if (!fast_func_addr &&
         drsym_lookup_symbol(mod->full_path,
-            "fast_function", &offset, 0) == DRSYM_SUCCESS)
+            "process_transaction_optimized", &offset, 0) == DRSYM_SUCCESS)
         fast_func_addr = mod->start + offset;
 }
 

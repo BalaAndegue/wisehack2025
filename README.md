@@ -83,17 +83,17 @@ These thresholds are **dynamic**, not hardcoded to specific binaries.
 
 ### 3️⃣ Symbol Resolution
 - The engine resolves:
-  - `slow_function`
-  - `fast_function`
+  - `process_transaction`
+  - `process_transaction_optimized`
 - Using `drsym_lookup_symbol`
 
 ### 4️⃣ Safe Redirection (Hot-Patching)
 - Redirection is applied **only if**:
-  - The detected hotspot corresponds to `slow_function`
+  - The detected hotspot corresponds to `process_transaction`
   - Both symbols are successfully resolved
 - The patch is applied **once only** using:
   ```c
-  drwrap_replace(slow_function, fast_function)
+  drwrap_replace(process_transaction, process_transaction_optimized)
 
 
 This ensures:
@@ -149,10 +149,10 @@ Expected result:
 Expected output:
 
 ```
-[INFO] slow_function found at 0x...
-[INFO] fast_function found at 0x...
-[HOTSPOT CONFIRMED] slow_function
-[PATCH] slow_function redirected to fast_function
+[INFO] process_transaction found at 0x...
+[INFO] process_transaction_optimized found at 0x...
+[HOTSPOT CONFIRMED] process_transaction
+[PATCH] process_transaction redirected to process_transaction_optimized
 ```
 
 ---
@@ -174,8 +174,8 @@ Expected output:
 
 * The engine assumes the presence of:
 
-  * `slow_function`
-  * `fast_function`
+  * `process_transaction`
+  * `process_transaction_optimized`
     with identical signatures
 * Detection is currently performed at program exit (not live)
 * Memory access tracking is coarse-grained (BB-level)
